@@ -144,12 +144,16 @@
 
 void _writeReg(byte reg, byte val);
 
+template <class WireType>
 class TCS3414 {
   //    int gain;  // TODO : thought maybe we could compute some measure in uW/cm^2 using that...
   //    byte itime;
   //    int prescaler;
+private:
+  WireType myWire;
 
 public:
+  TCS3414(WireType myWire);
 
 #define TCS3414_FREEMODE  0            // typical mode, runs free every 12MS/100MS/400MS and outputs results in registers
 #define TCS3414_LEVELINTERRUPTMODE  1

@@ -30,108 +30,126 @@
 #include <Wire.h>
 #include "TCS3414Lib.h"
 
-void _writeReg(byte reg, byte val) {
-  Wire.beginTransmission(TCS3414_ADDR);
-  Wire.write(reg | CMD_WRITE | CMD_TRANSACTION_BYTE);  // systematically use CMD_WRITE bit to write values into registers
-  Wire.write(val);
-  Wire.endTransmission();
+template <class WireType>
+void _writeReg(WireType wire, byte reg, byte val) {
+  wire.beginTransmission(TCS3414_ADDR);
+  wire.write(reg | CMD_WRITE | CMD_TRANSACTION_BYTE);  // systematically use CMD_WRITE bit to write values into registers
+  wire.write(val);
+  wire.endTransmission();
 }
 
-void TCS3414::init(int mode) {
+template <class WireType>
+TCS3414<WireType>::TCS3414(WireType wire) {
+  this->myWire = wire;
+}
+
+template <class WireType>
+void TCS3414<WireType>::init(int mode) {
   switch(mode) {
   case TCS3414_LEVELINTERRUPTMODE:
     // the process below will set an interrupt each time the value of the CLEAR channel goes above 65530 (overflow, right ?)
     setLevelThreshold(REG_LOW_THRESH, 0x0000);
     setLevelThreshold(REG_HIGH_THRESH, 4000);
-    _writeReg(REG_INT_SOURCE, INT_SOURCE_CLEAR); // set the interrupt source to the CLEAR channel
+    _writeReg(this->myWire, REG_INT_SOURCE, INT_SOURCE_CLEAR); // set the interrupt source to the CLEAR channel
     break; 
   case TCS3414_FREEMODE:
   default:
-    _writeReg(REG_TIMING, INTEG_MODE_FREE | INTEG_PARAM_INTTIME_12MS);
-    _writeReg(REG_INT, INTR_CTL_DISABLE);
+    _writeReg(this->myWire, REG_TIMING, INTEG_MODE_FREE | INTEG_PARAM_INTTIME_12MS);
+    _writeReg(this->myWire, REG_INT, INTR_CTL_DISABLE);
     setGain(GAIN_1, PRESCALER_1); // set default gain value and prescaler value
     //      _writeReg(REG_CTL, 0x03); // Enable ADCs; 
     break;
   };
 }
 
-void TCS3414::start() {
+template <class WireType>
+void TCS3414<WireType>::start() {
   enableADC();
 }
-void TCS3414::stop() {
+
+template <class WireType>
+void TCS3414<WireType>::stop() {
   disableADC();
 }
 
-void TCS3414::getRGB(uint16_t * red, uint16_t * green, uint16_t * blue, uint16_t * clr) {
+template <class WireType>
+void TCS3414<WireType>::getRGB(uint16_t * red, uint16_t * green, uint16_t * blue, uint16_t * clr) {
   //    delay(500);
 
-  Wire.beginTransmission(TCS3414_ADDR);
-  Wire.write(CMD_WRITE | REG_BLOCK_READ);
-  Wire.endTransmission();
+  this->myWire.beginTransmission(TCS3414_ADDR);
+  this->myWire.write(CMD_WRITE | REG_BLOCK_READ);
+  this->myWire.endTransmission();
 
   delay(20);
-  Wire.beginTransmission(TCS3414_ADDR);
-  Wire.requestFrom(TCS3414_ADDR, 8);
-  while (Wire.available() < 8);  // TODO : do we really want to force to receive 8 bytes ???
+  this->myWire.beginTransmission(TCS3414_ADDR);
+  this->myWire.requestFrom(TCS3414_ADDR, 8);
+  while (this->myWire.available() < 8);  // TODO : do we really want to force to receive 8 bytes ???
   byte * b = (byte*)green;
-  b[0] = Wire.read();
-  b[1] = Wire.read();
+  b[0] = this->myWire.read();
+  b[1] = this->myWire.read();
   b = (byte*)red;
-  b[0] = Wire.read();
-  b[1] = Wire.read();
+  b[0] = this->myWire.read();
+  b[1] = this->myWire.read();
   b = (byte*)blue;
-  b[0] = Wire.read();
-  b[1] = Wire.read();
+  b[0] = this->myWire.read();
+  b[1] = this->myWire.read();
   b = (byte*)clr;
-  b[0] = Wire.read();
-  b[1] = Wire.read();
-  Wire.endTransmission();
+  b[0] = this->myWire.read();
+  b[1] = this->myWire.read();
+  this->myWire.endTransmission();
 }
 
-void TCS3414::getValues(uint16_t * values) {
+template <class WireType>
+void TCS3414<WireType>::getValues(uint16_t * values) {
   //    delay(500);
-  Wire.beginTransmission(TCS3414_ADDR);
-  Wire.write(CMD_WRITE | REG_BLOCK_READ);
-  Wire.endTransmission();
+  this->myWire.beginTransmission(TCS3414_ADDR);
+  this->myWire.write(CMD_WRITE | REG_BLOCK_READ);
+  this->myWire.endTransmission();
 
-  Wire.beginTransmission(TCS3414_ADDR);
-  Wire.requestFrom(TCS3414_ADDR, 8);
-  while (Wire.available() < 8);  // TODO : do we really want to force to receive 8 bytes ???
+  this->myWire.beginTransmission(TCS3414_ADDR);
+  this->myWire.requestFrom(TCS3414_ADDR, 8);
+  while (this->myWire.available() < 8);  // TODO : do we really want to force to receive 8 bytes ???
   byte * b = (byte*)values;
   for (int i = 0; i < 8; i++) {
-    b[i] = Wire.read();
+    b[i] = this->myWire.read();
     //Serial.println(readingdata[i],BIN);
   }
-  Wire.endTransmission();
+  this->myWire.endTransmission();
 }
 
-void TCS3414::disableADC() {
-  _writeReg(REG_CTL, CTL_POWER); 
+template <class WireType>
+void TCS3414<WireType>::disableADC() {
+  _writeReg(this->myWire, REG_CTL, CTL_POWER); 
 }
 
-void TCS3414::enableADC() {
-  _writeReg(REG_CTL, CTL_ADC_EN | CTL_POWER); 
+template <class WireType>
+void TCS3414<WireType>::enableADC() {
+  _writeReg(this->myWire, REG_CTL, CTL_ADC_EN | CTL_POWER); 
 }
 
-void TCS3414::powerOn() {
-  _writeReg(REG_CTL, CTL_POWER); 
+template <class WireType>
+void TCS3414<WireType>::powerOn() {
+  _writeReg(this->myWire, REG_CTL, CTL_POWER); 
 }
 
-void TCS3414::setLevelThreshold(byte reg, uint16_t thresh) {
+template <class WireType>
+void TCS3414<WireType>::setLevelThreshold(byte reg, uint16_t thresh) {
   byte * b = (byte*)&thresh;
-  Wire.beginTransmission(TCS3414_ADDR);
-  Wire.write(reg | CMD_WRITE | CMD_TRANSACTION_WORD);
-  Wire.write(b[0]);
-  Wire.write(b[1]);
-  Wire.endTransmission();
+  this->myWire.beginTransmission(TCS3414_ADDR);
+  this->myWire.write(reg | CMD_WRITE | CMD_TRANSACTION_WORD);
+  this->myWire.write(b[0]);
+  this->myWire.write(b[1]);
+  this->myWire.endTransmission();
 }
 
-void TCS3414::setIntegrationTime(byte itime) {
+template <class WireType>
+void TCS3414<WireType>::setIntegrationTime(byte itime) {
   //    this->itime = itime & 0x0F;
-  _writeReg(REG_TIMING, itime);
+  _writeReg(this->myWire, REG_TIMING, itime);
 }
 
-void TCS3414::setGain(byte gain, byte prescaler) {
+template <class WireType>
+void TCS3414<WireType>::setGain(byte gain, byte prescaler) {
   /*
     switch(gain) {
    case GAIN_4:
@@ -154,12 +172,13 @@ void TCS3414::setGain(byte gain, byte prescaler) {
    else
    this->prescaler = 1;
    */
-  _writeReg(REG_GAIN, gain | prescaler);
+  _writeReg(this->myWire, REG_GAIN, gain | prescaler);
 }
 
-void TCS3414::clearInterrupt() {
-  Wire.beginTransmission(TCS3414_ADDR);
-  Wire.write(CMD_CLEARINT);
-  Wire.endTransmission();
+template <class WireType>
+void TCS3414<WireType>::clearInterrupt() {
+  this->myWire.beginTransmission(TCS3414_ADDR);
+  this->myWire.write(CMD_CLEARINT);
+  this->myWire.endTransmission();
 }
 
