@@ -27,7 +27,6 @@
 /******************************************************************************/
 
 #include <Arduino.h>
-#include <Wire.h>
 #include "TCS3414Lib.h"
 
 template <class WireType>
